@@ -61,6 +61,7 @@ setup(
         'PySocks==1.6.8',
         'queues==0.6.3',
         'requests==2.18.4',
+        'grequests==0.3.0',
         'simplejson==3.8.1',
         'urllib3==1.22',
         'websocket-client==0.47.0'
