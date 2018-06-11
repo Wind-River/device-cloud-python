@@ -88,7 +88,7 @@ class Client(object):
 
         self.identity = Identity()
 
-        self.database = None
+        self.sds = None
 
         # Add sleep for idle loop
         # default is 0.1
