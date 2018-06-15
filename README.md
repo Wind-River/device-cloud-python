@@ -22,6 +22,29 @@ platform that supports Python.  The continuous deployment model uses
 wants to use HDC cloud services can import the "device_cloud" module and
 begin using the HDC APIs.
 
+Code Sanity
+-----------
+Contributions to the project are handled via Pull Request (PR).  Every
+PR is sanitized before code review takes place using travisCI.  PRs
+that do not pass CI are not accepted.  See .travis.yml for details.
+
+Branching Strategy
+------------------
+Only one branch is supported, i.e. the master branch. The
+master branch contains all the latest features and bug fixes.  The
+master branch is always *sane*.
+
+Release Tags
+------------
+Release tags are generated at regular intervals, e.g. 1 per month.
+When a release tag is generated, the version is updated and the
+release is pushed to PyPi for use with the python module installation
+tool *pip*.
+
+Version Numbers
+--------------
+The version format use YY.MM.DD.  The setup.py contains the version number.
+
 Requirements:
 -------------
 - Python 2.7.9+, 3.4+
