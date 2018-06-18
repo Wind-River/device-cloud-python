@@ -146,3 +146,17 @@ iptables -A OUTPUT -i lo -j ACCEPT
 iptables -A INPUT -p udp -m udp --dport 53 -j ACCEPT
 iptables -A OUTPUT -p udp -m udp --sport 53 -j ACCEPT
 ```
+
+
+Issues with a proxy server
+--------------------------
+If a call back wants to make a requests call to localhost, i.e. do not
+go over the proxy server, then it will not work because the
+socket.socket has been overridden in the parent by PySocks to support
+the proxy.  However, there is a work around.  In the call back where
+requests is being used, restore socket.socket before calling requests:
+
+```
+socket.socket = client.handler.original_socket
+r = requests.get('https://localhost:443', verify=False)
+```
