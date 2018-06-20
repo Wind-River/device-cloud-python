@@ -152,7 +152,8 @@ class Relay(object):
             idx = raw_data[0]
             data = raw_data[1:]
         else:
-            raw_data = bytearray(d, self.def_enc)
+            # don't change the encoding for py2, this corrupts ssl
+            raw_data = bytearray(d)
             idx = raw_data[0]
             del raw_data[0]
             data = raw_data
@@ -172,44 +173,46 @@ class Relay(object):
             if self.lsock:
                 data = ''
                 read_sockets, write_sockets, _es = select.select(self.lsock, [], [], 1)
-                if len(read_sockets):
-                    for s in read_sockets:
+                for s in read_sockets:
+                    try:
+                        data = s.recv(1024)
+                        self.log(logging.DEBUG, "recv {} from local socket".format(len(data)))
+                    except:
+                        # during a close a read might return a EBADF,
+                        # that is ok, pass it don't dump an exception
+                        pass
+                    if data:
+                        # get the idx
+                        idx = self.lsocket_map[s]
                         try:
-                            data = s.recv(4096)
-                        except:
-                            # during a close a read might return a EBADF,
-                            # that is ok, pass it don't dump an exception
-                            pass
-                        if data:
-                            # get the idx
-                            idx = self.lsocket_map[s]
-                            try:
-                                if self._multi_channel:
-                                    d = self._prepend_index(idx, data)
-                                else:
-                                    d = data
-                                self.wsock.send(d, opcode=op_binary)
-                            except websocket.WebSocketConnectionClosedException:
-                                self.log(logging.ERROR, "Websocket closed")
-                                close_ws = True
-                                break
-                        else:
-                            self.log(logging.INFO, "{}: Received NULL from local socket".format(self.log_name))
-                            if self.reconnect and self.running and self._multi_channel:
-                                self.log(logging.INFO, "Reconnecting local socket")
-
-                                # multi channel: notify dra and dra
-                                # will send a new connect msg in
-                                # _on_message
-                                idx = self.lsocket_map[s]
-                                self.wsock.send(chr(idx) + DISCONNECT_MULTI_MSG, opcode=op_binary)
-                                self.lsock.remove(s)
-                                self.lsocket_map.pop(s, None)
-                                break
+                            if self._multi_channel:
+                                d = self._prepend_index(idx, data)
                             else:
-                                self.log(logging.INFO, "Disconnecting all sockets")
-                                self.running = False
-                                break
+                                d = data
+                            self.wsock.send(d, opcode=op_binary)
+                            self.log(logging.DEBUG, "send {} to WS".format(len(d)))
+                        except websocket.WebSocketConnectionClosedException:
+                            self.log(logging.ERROR, "Websocket closed")
+                            close_ws = True
+                            break
+                    else:
+                        self.log(logging.INFO, "{}: Received NULL from local socket".format(self.log_name))
+                        if self.reconnect and self.running and self._multi_channel:
+
+
+                            # multi channel: notify dra and dra
+                            # will send a new connect msg in
+                            # _on_message
+                            idx = self.lsocket_map[s]
+                            self.log(logging.INFO, "Disconnecting local socket idx {}".format(idx))
+                            self.wsock.send(chr(idx) + DISCONNECT_MULTI_MSG, opcode=op_binary)
+                            self.lsock.remove(s)
+                            self.lsocket_map.pop(s, None)
+                            break
+                        else:
+                            self.log(logging.INFO, "Disconnecting all sockets")
+                            self.running = False
+                            break
             else:
                 time.sleep(0.1)
         for s in self.lsock:
