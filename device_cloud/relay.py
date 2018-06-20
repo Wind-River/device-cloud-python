@@ -137,7 +137,11 @@ class Relay(object):
         bytearray.  Need to encode for py3.  Py2 just return the data.
         """
         if sys.version_info[0] > 2:
-            raw_data = bytes(d, self.def_enc)
+            # Only encode if the type is str, some protocols are mixed
+            if isinstance(d, str):
+                raw_data = bytes(d, self.def_enc)
+            else:
+                raw_data = d
         else:
             raw_data = d
         return raw_data
@@ -310,7 +314,8 @@ class Relay(object):
         self.log(logging.INFO, "{} Stopping".format(self.log_name))
         self.running = False
         self.reconnect = False
-        self.track_ws.close()
+        if self.track_ws:
+            self.track_ws.close()
         if self.thread:
             self.thread.join()
             self.thread = None
