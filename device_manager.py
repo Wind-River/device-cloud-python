@@ -469,6 +469,7 @@ def publish_remote_access_attr(client):
     rem_acc_attr = {}
     rem_acc_proto_list = []
     rem_acc_count = 0
+    remote_access_attribute = None
     for i in config.remote_access_support:
         d = {}
         for k,v in iteritems(i._asdict()):
