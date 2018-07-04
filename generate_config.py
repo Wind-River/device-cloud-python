@@ -32,7 +32,7 @@ proxy_host_desc = "\nProxy host address"
 proxy_port_desc = "\nProxy port"
 proxy_username_desc = "\nProxy username (Optional)"
 proxy_password_desc = "\nProxy password (Optional)"
-onprem_desc = "\nSet on-prem special conifguration? (default false) (Optional)"
+onprem_desc = "\nSet on-prem special configuration? (default false) (Optional)"
 onprem_file_xfer_host_desc = "\nOn-prem set a different host for file transfer? (Optional)"
 onprem_file_xfer_port_desc = "\nOn-prem set a different port for file transfer (Optional)"
 
