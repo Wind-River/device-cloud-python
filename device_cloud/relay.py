@@ -91,7 +91,7 @@ class Relay(object):
         self.lsocket_map = {}
 
     def _connect_local(self, idx=0):
-        self.log(logging.DEBUG, "_connect_local idx {}".format(idx))
+        self.log(logging.DEBUG, "idx {} _connect_local".format(idx))
         ret = False
         try:
             # check for proxy.  If not proxy, this
@@ -109,8 +109,17 @@ class Relay(object):
             s.setblocking(0)
 
             self.lsock.append(s)
+
+            # check to see if the socket is already tracked
+            if s in self.lsocket_map:
+                self.log(logging.ERROR,"Dupliate socket {} already in map".format(s))
+
+            # check to see if the idx is already tracked
+            for i in self.lsocket_map.keys():
+                if self.lsocket_map[i] == idx:
+                    self.log(logging.ERROR,"Dupliate index {} in map".format(idx))
             self.lsocket_map[s] = idx
-            self.log(logging.DEBUG, "connected to {}.".format(self.sock_port))
+            self.log(logging.DEBUG, "idx {} connected to {}.".format(idx, self.sock_port))
         except socket.error as err:
             self.running = False
             ret = True
@@ -172,39 +181,45 @@ class Relay(object):
         while self.running is True and not close_ws:
             if self.lsock:
                 data = ''
-                read_sockets, write_sockets, _es = select.select(self.lsock, [], [], 1)
+                try:
+                    read_sockets, write_sockets, _es = select.select(self.lsock, [], [], 1)
+                except socket.error:
+                    pass
                 for s in read_sockets:
                     try:
                         data = s.recv(1024)
-                        self.log(logging.DEBUG, "recv {} from local socket".format(len(data)))
+                        self.log(logging.DEBUG, "idx {} recv {} from local socket".format(
+                            self.lsocket_map[s], len(data)))
                     except:
                         # during a close a read might return a EBADF,
                         # that is ok, pass it don't dump an exception
                         pass
                     if data:
                         # get the idx
-                        idx = self.lsocket_map[s]
+                        if s in self.lsocket_map:
+                            idx = self.lsocket_map[s]
                         try:
                             if self._multi_channel:
                                 d = self._prepend_index(idx, data)
                             else:
                                 d = data
                             self.wsock.send(d, opcode=op_binary)
-                            self.log(logging.DEBUG, "send {} to WS".format(len(d)))
+                            self.log(logging.DEBUG, "idx {} send {} to WS".format(idx, len(d)))
                         except websocket.WebSocketConnectionClosedException:
                             self.log(logging.ERROR, "Websocket closed")
                             close_ws = True
                             break
                     else:
-                        self.log(logging.INFO, "{}: Received NULL from local socket".format(self.log_name))
+                        if s in self.lsocket_map:
+                            idx = self.lsocket_map[s]
+                        self.log(logging.INFO, "idx {} received NULL from local socket".format(idx))
                         if self.reconnect and self.running and self._multi_channel:
 
 
                             # multi channel: notify dra and dra
                             # will send a new connect msg in
                             # _on_message
-                            idx = self.lsocket_map[s]
-                            self.log(logging.INFO, "Disconnecting local socket idx {}".format(idx))
+                            self.log(logging.INFO, "idx {} disconnecting local socket".format(idx))
                             self.wsock.send(chr(idx) + DISCONNECT_MULTI_MSG, opcode=op_binary)
                             self.lsock.remove(s)
                             self.lsocket_map.pop(s, None)
@@ -243,10 +258,11 @@ class Relay(object):
                 # local socket.
                 self._connect_local()
                 self.lconnect = 1;
-                self.log(logging.DEBUG, "{} Local socket opened".format(self.log_name))
+                self.log(logging.DEBUG, "Received connect for local socket")
             elif data == DISCONNECT_MULTI_MSG:
-                self.log(logging.DEBUG, "Received disconnect message")
-                self._on_error(ws, "received disconnect")
+                idx = ord(data[0])
+                self.log(logging.DEBUG, "idx {} received disconnect".format(idx))
+
             elif CONNECT_MULTI_MSG in data:
                 # this will be called for every new connection
                 # on reconnect, send the idx + DISCONN message on ws
@@ -254,16 +270,16 @@ class Relay(object):
                 # ord/chr it before recv/send
                 idx = ord(data[0])
 
-                self.log(logging.DEBUG, "{} Local socket opened idx {}".format(self.log_name, idx))
+                self.log(logging.DEBUG, "idx {} received connect for local socket".format(idx))
                 self._connect_local(idx=idx)
                 self._multi_channel = True
             else:
                 # send to local socket
-                self.log(logging.DEBUG, "_on_message: send {} -> local socket".format(len(data)))
 
                 if self._multi_channel:
                     s_data, idx = self._strip_index(data)
                     data = s_data
+                self.log(logging.DEBUG, "idx {} send {} -> local socket".format(idx, len(data)))
                 enc_data = self._encode_data(data)
                 self.lsock[idx].send(enc_data)
 
