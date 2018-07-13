@@ -921,11 +921,20 @@ class Handler(object):
                             sent_message.data.status = constants.STATUS_FAILURE
 
                 elif sent_command_type == TR50Command.property_current:
-                    # Recevied a reply for a ping request
                     if reply.get("success"):
                        params = reply.get("params")
                        self.response['telemetry_current_value'] = params.get("value")
                        self.response['telemetry_current_timestamp'] = params.get("ts")
+                    else:
+                        if -90008 in reply.get("errorCodes", []):
+                            sent_message.data.status = constants.STATUS_NOT_FOUND
+                        elif sent_message.data != None:
+                            sent_message.data.status = constants.STATUS_FAILURE
+
+                elif sent_command_type == TR50Command.property_history:
+                    if reply.get("success"):
+                       params = reply.get("params")
+                       self.response['telemetry_history_values'] = params.get("values")
                     else:
                         if -90008 in reply.get("errorCodes", []):
                             sent_message.data.status = constants.STATUS_NOT_FOUND
@@ -1207,6 +1216,32 @@ class Handler(object):
             timestamp = self.response['telemetry_current_timestamp']
         return ret, value, timestamp
 
+    def handle_telemetry_history(self, telem_name, start, end ):
+        """
+        Add data to publish queue and wait for cloud response
+        """
+        command = tr50.create_property_get_history(self.config.key,
+                telem_name, start, end)
+        message_desc = "Reading current property..."
+        message = defs.OutMessage(command, message_desc)
+
+        self.pub_wait = True
+        status = self.send(message)
+        value = None
+        timestamp = None
+
+        # Wait for response from sending to cloud
+        while self.pub_wait:
+            sleep(0.5)
+        # Convert to return codes
+        if self.pub_response:
+            ret = constants.STATUS_SUCCESS
+        else:
+            ret = constants.STATUS_FAILURE
+
+        if 'telemetry_history_values' in self.response.keys():
+            values = self.response['telemetry_history_values']
+        return ret, values
 
     def is_connected(self):
         """
