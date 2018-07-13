@@ -69,6 +69,7 @@ class TR50Command(object):
     property_publish = "property.publish"
     property_batch = "property.batch"
     property_current = "property.current"
+    property_history= "property.history"
     thing_find = "thing.find"
     thing_update = "thing.update"
 
@@ -387,6 +388,17 @@ def create_property_get_current( thing_key, key, timestamp=None):
     cmd["params"] = _generate_params(kwargs)
     return cmd
 
+def create_property_get_history( thing_key, key, start, end):
+
+    kwargs = {
+        "thingKey":thing_key,
+        "key":key,
+        "start":start,
+        "end":end
+    }
+    cmd = {"command":TR50Command.property_history}
+    cmd["params"] = _generate_params(kwargs)
+    return cmd
 
 def create_thing_find(key):
     """

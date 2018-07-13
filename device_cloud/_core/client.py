@@ -33,6 +33,7 @@ from device_cloud._core import defs
 from device_cloud._core.handler import Handler
 from device_cloud.identity import Identity
 
+from datetime import datetime
 
 class Client(object):
     """
@@ -551,6 +552,8 @@ class Client(object):
           STATUS_SUCCESS             Telemetry has been queued for publishing
         """
 
+        if corr_id != None:
+            corr_id = str(corr_id)
         telem = defs.PublishTelemetry(telemetry_name, value, timestamp, corr_id, aggregate)
         return self.handler.request_publish(telem, cloud_response)
 
@@ -568,6 +571,28 @@ class Client(object):
         """
 
         return self.handler.handle_telemetry_get(telemetry_name)
+
+    def telemetry_read_history(self, telemetry_name, start, end=None):
+        """
+        Read a snapshot of the telemetry history between two time
+        points. The end_ts is optional, meaning the current time will
+        be used if empty.
+
+        Parameters
+          telemetry_name      (string) Key of property to publish
+          start               Starting point from where to retrieve
+                              telemetry
+          end                 End point from where to retrieve
+                              telemetry.
+
+        Returns:
+          STATUS_SUCCESS               Telemetry has been queued for publishing
+          list                         JSON list of values from the cloud
+        """
+
+        if not end:
+            end = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        return self.handler.handle_telemetry_history(telemetry_name, start, end)
 
     def attribute_read_last_sample(self, attribute_name):
         """
