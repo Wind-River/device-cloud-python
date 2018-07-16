@@ -168,6 +168,7 @@ class Relay(object):
         # ws data must be in binary format.  The websocket lib uses
         # this op code
         op_binary = 0x2
+        op_text = 0x1
         close_ws = False
         while self.running is True and not close_ws:
             if self.lsock:
@@ -176,7 +177,7 @@ class Relay(object):
                 for s in read_sockets:
                     try:
                         data = s.recv(1024)
-                        self.log(logging.DEBUG, "recv {} from local socket".format(len(data)))
+                        self.log(logging.DEBUG, "idx {} recv {} from local socket".format(self.lsocket_map[s], len(data)))
                     except:
                         # during a close a read might return a EBADF,
                         # that is ok, pass it don't dump an exception
@@ -205,7 +206,9 @@ class Relay(object):
                             # _on_message
                             idx = self.lsocket_map[s]
                             self.log(logging.INFO, "Disconnecting local socket idx {}".format(idx))
-                            self.wsock.send(chr(idx) + DISCONNECT_MULTI_MSG, opcode=op_binary)
+
+                            # note: disconnect must be string
+                            self.wsock.send(chr(idx) + DISCONNECT_MULTI_MSG, opcode=op_text)
                             self.lsock.remove(s)
                             self.lsocket_map.pop(s, None)
                             break
@@ -244,9 +247,14 @@ class Relay(object):
                 self._connect_local()
                 self.lconnect = 1;
                 self.log(logging.DEBUG, "{} Local socket opened".format(self.log_name))
-            elif data == DISCONNECT_MULTI_MSG:
+            elif DISCONNECT_MULTI_MSG in data:
                 self.log(logging.DEBUG, "Received disconnect message")
-                self._on_error(ws, "received disconnect")
+                for i in self.lsocket_map.keys():
+                    if self.lsocket_map[i] == idx:
+                        i.close()
+                        self.lsock.remove(i)
+                        self.lsocket_map.pop(i, None)
+
             elif CONNECT_MULTI_MSG in data:
                 # this will be called for every new connection
                 # on reconnect, send the idx + DISCONN message on ws
@@ -259,13 +267,19 @@ class Relay(object):
                 self._multi_channel = True
             else:
                 # send to local socket
-                self.log(logging.DEBUG, "_on_message: send {} -> local socket".format(len(data)))
 
                 if self._multi_channel:
                     s_data, idx = self._strip_index(data)
+                    self.log(logging.DEBUG, "_on_message {}: send {} -> local socket".format(idx,len(data)))
                     data = s_data
                 enc_data = self._encode_data(data)
-                self.lsock[idx].send(enc_data)
+                s = None
+                for i in self.lsocket_map.keys():
+                    if self.lsocket_map[i] == idx:
+                        s = i
+                        break
+                if s:
+                    s.send(enc_data)
 
     def _on_error(self, ws, exception):
         self.log(logging.ERROR, "_on_error: {}".format(str(exception)))
