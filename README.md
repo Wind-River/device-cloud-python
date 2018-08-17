@@ -1,7 +1,7 @@
 Wind River® Helix™ Device Cloud Python Agent
 ===============================
-[![Build Status](https://travis-ci.com/Wind-River/device-cloud-python.svg?token=q5RoFNe28qXM6phPRKSk&branch=master)
-](https://travis-ci.com/Wind-River/device-cloud-python)
+[![Build Status](https://travis-ci.org/deviceWISE/device-cloud-python.svg?branch=master)
+](https://travis-ci.org/deviceWISE/device-cloud-python)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/15033/badge.svg)](https://scan.coverity.com/projects/15033)
 
 Documentation:
