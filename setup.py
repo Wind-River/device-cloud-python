@@ -62,7 +62,7 @@ setup(
         'queues==0.6.3',
         'requests==2.18.4',
         'simplejson==3.8.1',
-        'urllib3==1.22',
+        'urllib3==1.24.2',
         'websocket-client==0.47.0'
         ],
     maintainer='Paul Barrette',
